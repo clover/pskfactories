@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group 'org.bchateau'
+version '0.1'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    javaMainClass = "Main"
+}
+
+application {
+    mainClass = javaMainClass
+}
+
+jar {
+    manifest {
+        attributes(
+                "Main-Class": javaMainClass
+        )
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation "com.squareup.okhttp3:okhttp:3.12.13"
+    implementation "org.nanohttpd:nanohttpd:2.3.1"
+}
+
+test {
+    useJUnitPlatform()
+}
