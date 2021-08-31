@@ -18,6 +18,12 @@ application {
     mainClass = javaMainClass
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
 jar {
     manifest {
         attributes(
