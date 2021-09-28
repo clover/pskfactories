@@ -16,6 +16,8 @@
 
 package org.bchateau.pskfactories;
 
+import javax.net.ssl.HandshakeCompletedListener;
+import javax.net.ssl.SSLSocket;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -23,27 +25,28 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
- * Wraps one Socket with another Socket but redirects IO to provided parameter
- * streams to allow for TLS implementation to process the data moving through
- * the Socket.
+ * This class delegates most functionality to a wrapped regular Socket.
  */
-class WrappedSocket extends Socket {
+abstract class WrappedSSLSocket extends SSLSocket {
 
     private final Socket socket;
-    private final InputStream in;
-    private final OutputStream out;
 
-    public WrappedSocket(Socket socket, InputStream in, OutputStream out) throws IOException {
-        super((java.net.SocketImpl) null);
+    private final List<HandshakeCompletedListener> listeners = new ArrayList<>(2);
+
+    public WrappedSSLSocket(Socket socket) {
+        super();
         this.socket = socket;
-        if (in == null || out == null) {
-            throw new NullPointerException();
-        }
-        this.in = in;
-        this.out = out;
+    }
+
+    @Override
+    public void connect(SocketAddress endpoint, int timeout) throws IOException {
+        socket.connect(endpoint, timeout);
     }
 
     @Override
@@ -67,14 +70,10 @@ class WrappedSocket extends Socket {
     }
 
     @Override
-    public InputStream getInputStream() throws IOException {
-        return in;
-    }
+    public abstract InputStream getInputStream() throws IOException;
 
     @Override
-    public OutputStream getOutputStream() throws IOException {
-        return out;
-    }
+    public abstract OutputStream getOutputStream() throws IOException;
 
     @Override
     public void setTcpNoDelay(boolean on) throws SocketException {
@@ -167,22 +166,27 @@ class WrappedSocket extends Socket {
     }
 
     @Override
-    public synchronized void setSendBufferSize(int size) throws SocketException {
+    public SocketChannel getChannel() {
+        return null;
+    }
+
+    @Override
+    public void setSendBufferSize(int size) throws SocketException {
         socket.setSendBufferSize(size);
     }
 
     @Override
-    public synchronized int getSendBufferSize() throws SocketException {
+    public int getSendBufferSize() throws SocketException {
         return socket.getSendBufferSize();
     }
 
     @Override
-    public synchronized void setReceiveBufferSize(int size) throws SocketException {
+    public void setReceiveBufferSize(int size) throws SocketException {
         socket.setReceiveBufferSize(size);
     }
 
     @Override
-    public synchronized int getReceiveBufferSize() throws SocketException {
+    public int getReceiveBufferSize() throws SocketException {
         return socket.getReceiveBufferSize();
     }
 
@@ -223,7 +227,7 @@ class WrappedSocket extends Socket {
 
     @Override
     public void bind(SocketAddress bindpoint) throws IOException {
-        throw new UnsupportedOperationException();
+        socket.bind(bindpoint);
     }
 
     @Override
@@ -232,7 +236,26 @@ class WrappedSocket extends Socket {
     }
 
     @Override
+    public void addHandshakeCompletedListener(HandshakeCompletedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("'listener' cannot be null");
+        }
+
+        listeners.add(listener);
+    }
+
+    @Override
+    public void removeHandshakeCompletedListener(HandshakeCompletedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("'listener' cannot be null");
+        }
+        if (!listeners.remove(listener)) {
+            throw new IllegalArgumentException("'listener' is not registered");
+        }
+    }
+
+    @Override
     public String toString() {
-        return "Wrapped" + socket.toString();
+        return "WrappedSSL" + socket.toString();
     }
 }

@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.security.Principal;
 import java.security.SecureRandom;
@@ -35,13 +34,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.net.ssl.HandshakeCompletedListener;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSessionBindingEvent;
 import javax.net.ssl.SSLSessionBindingListener;
 import javax.net.ssl.SSLSessionContext;
-import javax.net.ssl.SSLSocket;
+
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
@@ -81,7 +79,6 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
 
         @Override
         protected void raiseAlertFatal(short alertDescription, String message, Throwable cause) throws IOException {
-            System.err.println(BcPskSSLSocketFactory.class.getSimpleName() + " " + message + ", caused by " + cause);
             cause.printStackTrace();
         }
 
@@ -196,10 +193,10 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
 
         BcPskTlsClientProtocol tlsClientProtocol = new BcPskTlsClientProtocol(socket.getInputStream(), socket.getOutputStream());
 
-        return new SSLSocket() {
+        return new WrappedSSLSocket(socket) {
             private String[] enabledCipherSuites = BcPskTlsParams.getSupportedCipherSuites();
             private String[] enabledProtocols = BcPskTlsParams.getSupportedProtocols();
-            private final List<HandshakeCompletedListener> listeners = new ArrayList<HandshakeCompletedListener>(2);
+
             private boolean enableSessionCreation = true;
 
             @Override
@@ -214,22 +211,10 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
 
             @Override
             public synchronized void close() throws IOException {
-                socket.close();
-                tlsClientProtocol.close();
-            }
-
-            @Override
-            public void connect(SocketAddress endpoint, int timeout) throws IOException {
-                socket.connect(endpoint, timeout);
-            }
-
-            @Override
-            public void addHandshakeCompletedListener(HandshakeCompletedListener listener) {
-                if (listener == null) {
-                    throw new IllegalArgumentException("'listener' cannot be null");
+                super.close();
+                synchronized (tlsClientProtocol) {
+                    tlsClientProtocol.close();
                 }
-
-                listeners.add(listener);
             }
 
             @Override
@@ -270,16 +255,6 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
             @Override
             public boolean getWantClientAuth() {
                 return false;
-            }
-
-            @Override
-            public void removeHandshakeCompletedListener(HandshakeCompletedListener listener) {
-                if (listener == null) {
-                    throw new IllegalArgumentException("'listener' cannot be null");
-                }
-                if (!listeners.remove(listener)) {
-                    throw new IllegalArgumentException("'listener' is not registered");
-                }
             }
 
             @Override
@@ -475,7 +450,7 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
                     @Override
                     public boolean isValid() {
                         // TODO: Check session time limit
-                        return isValid && !tlsClientProtocol.isClosed();
+                        return isValid && !socket.isClosed() && !tlsClientProtocol.isClosed();
                     }
 
                     @Override

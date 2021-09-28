@@ -66,7 +66,6 @@ public class BcPskSSLServerSocketFactory extends SSLServerSocketFactory {
 
         @Override
         protected void raiseAlertFatal(short alertDescription, String message, Throwable cause) throws IOException {
-            System.err.println(BcPskSSLServerSocketFactory.class.getSimpleName() + " " + message);
             cause.printStackTrace();
         }
 

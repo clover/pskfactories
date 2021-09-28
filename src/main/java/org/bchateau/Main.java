@@ -14,11 +14,16 @@
  * limitations under the License.
  */
 
+package org.bchateau;
+
 import fi.iki.elonen.NanoHTTPD;
+import okhttp3.Call;
 import okhttp3.CipherSuite;
 import okhttp3.ConnectionSpec;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.TlsVersion;
 import org.bchateau.pskfactories.BcPskSSLServerSocketFactory;
@@ -27,7 +32,12 @@ import org.bouncycastle.tls.BasicTlsPSKIdentity;
 import org.bouncycastle.tls.TlsPSKIdentityManager;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -56,8 +66,9 @@ public class Main {
 
                 testTlsPskClientWithOkHttpClientBackedByBc();
 
-                Thread.sleep(500);
+                Thread.sleep(2000);
             } catch (Exception e) {
+                log("Exception during test");
                 e.printStackTrace();
             } finally {
                 if (server != null) {
@@ -72,7 +83,7 @@ public class Main {
     }
 
     private static void testTlsPskClientWithOkHttpClientBackedByBc() throws IOException {
-        System.out.println("Running OkHttp Client backed by BC");
+        log("Running OkHttp Client backed by BC");
 
         BasicTlsPSKIdentity identity = new BasicTlsPSKIdentity("test", new byte[] { 0x1a, 0x2b, 0x3c, 0x4d } );
         OkHttpClient client = new OkHttpClient.Builder()
@@ -80,19 +91,44 @@ public class Main {
                 .sslSocketFactory(new BcPskSSLSocketFactory(identity), new BcPskSSLSocketFactory.EmptyX509TrustManager())
                 .hostnameVerifier((hostname, session) -> true)
                 .connectionSpecs(Collections.singletonList(new ConnectionSpec.Builder(ConnectionSpec.RESTRICTED_TLS)
-                                .cipherSuites(CipherSuite.TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256)
-                                .tlsVersions(TlsVersion.TLS_1_2)
-                                .build()))
+                        .cipherSuites(CipherSuite.TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256)
+                        .tlsVersions(TlsVersion.TLS_1_2)
+                        .build()))
                 .build();
 
-        Response resp = client.newCall(new Request.Builder().url("https://localhost:4433").build()).execute();
-        System.out.println("Got: " + resp.code());
+        Call call;
+        for (int i = 0; i < 6; i++) {
+            if (i % 2 == 0) {
+                log("Making a GET request");
+                call = client.newCall(new Request.Builder().
+                        url("https://localhost:4433").build());
+
+            } else {
+                log("Making a PUT request");
+                call = client.newCall(new Request.Builder()
+                        .method("PUT", RequestBody.create(MediaType.get("text/plain"), "Hi"))
+                        .url("https://localhost:4433").build());
+            }
+
+            try (Response resp = call.execute()) {
+                log("Got: " + resp.code());
+            }
+        }
     }
 
     private static HttpServerFinisher testTlsPskNanoHttpdWithBcFactory() throws IOException {
         NanoHTTPD nano = new NanoHTTPD(4433) {
              @Override
              public Response serve(IHTTPSession session) {
+                 Map<String, String> parameters = new HashMap<>();
+                 try {
+                     // Must consume the body
+                     session.parseBody(parameters);
+                 } catch (IOException e) {
+                     return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SERVER INTERNAL ERROR: IOException: " + e.getMessage());
+                 } catch (ResponseException e) {
+                     return newFixedLengthResponse(e.getStatus(), NanoHTTPD.MIME_PLAINTEXT, e.getMessage());
+                 }
                  return newFixedLengthResponse(Response.Status.TOO_MANY_REQUESTS, NanoHTTPD.MIME_PLAINTEXT, "Too much");
              }
          };
@@ -112,10 +148,15 @@ public class Main {
         // Setting sslProtocols param to null tells NanoHTTPD to allow all protocols supported by the ServerSocketFactory
         nano.makeSecure(new BcPskSSLServerSocketFactory(identityMgr), null);
 
-        System.out.println("Starting Nano HTTP server backed by BC");
+        log("Starting Nano HTTP server backed by BC");
         nano.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
 
         return nano::stop;
+    }
+
+    public static void log(String s) {
+        RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
+        System.out.println(String.format(Locale.US, "%08d", rb.getUptime()) + ": " + s + " (" + Thread.currentThread() + ")");
     }
 
 }
