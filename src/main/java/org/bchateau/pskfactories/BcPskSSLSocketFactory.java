@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Clover Network, Inc.
+ * Copyright (C) 2024 Clover Network, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,6 +75,16 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
     private static class BcPskTlsClientProtocol extends TlsClientProtocol {
         public BcPskTlsClientProtocol(InputStream input, OutputStream output) {
             super(input, output);
+        }
+
+        @Override
+        public void close() throws IOException {
+            // Avoid null pointer when "Unable to find acceptable protocols" occurs
+            if (getPeer() == null) {
+                cleanupHandshake();
+            } else {
+                super.close();
+            }
         }
 
         @Override

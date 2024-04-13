@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'org.bchateau'
-version '0.2'
+version '0.3'
 
 repositories {
     mavenCentral()
@@ -19,17 +19,12 @@ application {
 }
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(8)
-    }
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
-jar {
-    manifest {
-        attributes(
-                "Main-Class": javaMainClass
-        )
-    }
+test {
+    useJUnitPlatform()
 }
 
 dependencies {
@@ -37,8 +32,6 @@ dependencies {
 
     implementation "com.squareup.okhttp3:okhttp:3.12.13"
     implementation "org.nanohttpd:nanohttpd:2.3.1"
-}
 
-test {
-    useJUnitPlatform()
+    testImplementation "org.junit.jupiter:junit-jupiter:5.8.2"
 }

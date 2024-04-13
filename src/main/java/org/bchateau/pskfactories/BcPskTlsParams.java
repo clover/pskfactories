@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Clover Network, Inc.
+ * Copyright (C) 2024 Clover Network, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,17 +27,17 @@ import org.bouncycastle.tls.ProtocolVersion;
 class BcPskTlsParams {
 
     // Customize as needed
-    // Subset of org.bouncycastle.tls.PSKTlsClient cipher suites that are most secure
+    // Currently this is a subset of org.bouncycastle.tls.PSKTlsClient cipher suites that are most secure
     private static final int[] supportCipherSuiteCodes = new int[] {
+            CipherSuite.TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256,
             CipherSuite.TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256,
-            CipherSuite.TLS_DHE_PSK_WITH_CHACHA20_POLY1305_SHA256,
-            CipherSuite.TLS_DHE_PSK_WITH_AES_128_GCM_SHA256,
+            CipherSuite.TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384,
     };
 
     private static final String[] supportedCipherSuites;
 
-    // Customize as needed
-    // Specify just TLS v1.2 since as of 2021 it is well-supported and secure
+    // At this time the Bouncy Castle TLS implementation does not yet support TLS v1.3
+    // See org.bouncycastle.tls.PSKTlsServer
     private static final ProtocolVersion[] supportedProtocolVersions = new ProtocolVersion[] {
             ProtocolVersion.TLSv12,
     };
@@ -83,6 +83,12 @@ class BcPskTlsParams {
                 return "TLS_DHE_PSK_WITH_AES_128_GCM_SHA256";
             case 0x00B2:
                 return "TLS_DHE_PSK_WITH_AES_128_CBC_SHA256";
+            case 0x1301:
+                return "TLS_AES_128_GCM_SHA256";
+            case 0x1302:
+                return "TLS_AES_256_GCM_SHA384";
+            case 0x1303:
+                return "TLS_CHACHA20_POLY1305_SHA256";
             case 0xC035:
                 return "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA";
             case 0xC037:
@@ -93,6 +99,8 @@ class BcPskTlsParams {
                 return "TLS_DHE_PSK_WITH_CHACHA20_POLY1305_SHA256";
             case 0xD001:
                 return "TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256";
+            case 0xD002:
+                return "TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384";
         }
 
         throw new IllegalArgumentException("Unknown TLS cipher code: " + code);
@@ -108,6 +116,12 @@ class BcPskTlsParams {
                 return 0x00AA;
             case "TLS_DHE_PSK_WITH_AES_128_CBC_SHA256":
                 return 0x00B2;
+            case "TLS_AES_128_GCM_SHA256":
+                return 0x1301;
+            case "TLS_AES_256_GCM_SHA384":
+                return 0x1302;
+            case "TLS_CHACHA20_POLY1305_SHA256":
+                return 0x1303;
             case "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA":
                 return 0xC035;
             case "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA256":
@@ -118,6 +132,8 @@ class BcPskTlsParams {
                 return 0xCCAD;
             case "TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256":
                 return 0xD001;
+            case "TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384":
+                return 0xD002;
         }
 
         throw new IllegalArgumentException("Unknown TLS cipher: " + name);
