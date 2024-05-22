@@ -6,9 +6,7 @@ Bouncy Castle supports TLS PSK client and server connections but only through a 
 
 At this time only OkHttp (client) and NanoHTTPD (server) have been lightly tested with this implementation.
 
-TLS v1.2 with PSK is working. TLS v1.3 with PSK is not yet supported by Bouncy Castle, keep an eye out when this comment in Bouncy Castle source code is addressed:
-
-    TODO[tls13] Constrain selection when PSK selected
+TLS 1.2 and TLS 1.3 are supported.
 
 # Usage
 
@@ -31,12 +29,6 @@ To use this implementation copy the org.bchateau.pskfactories source code from t
 ## Use
 
 See the TestBcPskFactories#testServerClientConnect() method for example client and server use.
-
-Note that the cipher suites to allow can be customized by modifying BcPskTlsParams#supportCipherSuiteCodes. The current implementation enables the following very secure suites but others could be added as needed:
-
-    TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256
-    TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384
-    TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256
 
 # License
 

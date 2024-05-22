@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Vector;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
@@ -43,31 +44,37 @@ import javax.net.ssl.SSLSessionContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
+import org.bouncycastle.tls.BasicTlsPSKExternal;
 import org.bouncycastle.tls.PSKTlsClient;
 import org.bouncycastle.tls.ProtocolName;
 import org.bouncycastle.tls.ProtocolVersion;
 import org.bouncycastle.tls.SecurityParameters;
 import org.bouncycastle.tls.TlsClientProtocol;
 import org.bouncycastle.tls.TlsContext;
+import org.bouncycastle.tls.TlsPSKExternal;
 import org.bouncycastle.tls.TlsPSKIdentity;
 import org.bouncycastle.tls.crypto.TlsCrypto;
+import org.bouncycastle.tls.crypto.TlsSecret;
 import org.bouncycastle.tls.crypto.impl.bc.BcTlsCrypto;
 
 
 /**
- * This SSLSocketFactory provides TLS pre-shared key (PSK) ciphersuites via Bouncy Castle. The existing Bouncy Castle
- * JSSE provider as of version 1.69 does not offer PSK ciphersuites. This class has only been lightly tested against
- * OkHttpClient at this time. When using an instance of this class with OkHttp you should also provide and instance of
- * {@link EmptyX509TrustManager}.
+ * This SSLSocketFactory provides TLS pre-shared key (PSK) cipher suites via Bouncy Castle.
+ * <p>
+ * When using an instance of this class with OkHttpClient (and possibly other HTTP clients) you
+ * must provide an instance of {@link EmptyX509TrustManager} because a null TrustManager is not
+ * allowed, but the security of matching pre-shared keys is still enforced.
  */
 public class BcPskSSLSocketFactory extends SSLSocketFactory {
 
     private static final boolean DEBUG = false;
 
+    private final BcPskTlsParams params;
     private final TlsCrypto crypto;
     private final TlsPSKIdentity pskIdentity;
 
-    public BcPskSSLSocketFactory(TlsPSKIdentity pskIdentity) {
+    public BcPskSSLSocketFactory(BcPskTlsParams params, TlsPSKIdentity pskIdentity) {
+        this.params = params;
         this.crypto = new BcTlsCrypto(new SecureRandom());
         this.pskIdentity = pskIdentity;
     }
@@ -147,12 +154,12 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
 
     @Override
     public String[] getDefaultCipherSuites() {
-        return BcPskTlsParams.getSupportedCipherSuites();
+        return params.getSupportedCipherSuites();
     }
 
     @Override
     public String[] getSupportedCipherSuites() {
-        return BcPskTlsParams.getSupportedCipherSuites();
+        return params.getSupportedCipherSuites();
     }
 
     /**
@@ -204,8 +211,8 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
         BcPskTlsClientProtocol tlsClientProtocol = new BcPskTlsClientProtocol(socket.getInputStream(), socket.getOutputStream());
 
         return new WrappedSSLSocket(socket) {
-            private String[] enabledCipherSuites = BcPskTlsParams.getSupportedCipherSuites();
-            private String[] enabledProtocols = BcPskTlsParams.getSupportedProtocols();
+            private String[] enabledCipherSuites = params.getSupportedCipherSuites();
+            private String[] enabledProtocols = params.getSupportedProtocols();
 
             private boolean enableSessionCreation = true;
 
@@ -254,7 +261,7 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
 
             @Override
             public String[] getSupportedProtocols() {
-                return BcPskTlsParams.getSupportedProtocols();
+                return params.getSupportedProtocols();
             }
 
             @Override
@@ -317,7 +324,7 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
 
             @Override
             public String[] getSupportedCipherSuites() {
-                return BcPskTlsParams.getSupportedCipherSuites();
+                return params.getSupportedCipherSuites();
             }
 
             @Override
@@ -331,6 +338,14 @@ public class BcPskSSLSocketFactory extends SSLSocketFactory {
                     @Override
                     protected int[] getSupportedCipherSuites() {
                         return BcPskTlsParams.fromSupportedCipherSuiteCodes(getEnabledCipherSuites());
+                    }
+
+                    @Override
+                    public Vector getExternalPSKs() {
+                        Vector<TlsPSKExternal> externals = new Vector<>();
+                        TlsSecret secret = crypto.createSecret(pskIdentity.getPSK());
+                        externals.add(new BasicTlsPSKExternal(pskIdentity.getPSKIdentity(), secret));
+                        return externals;
                     }
                 });
             }

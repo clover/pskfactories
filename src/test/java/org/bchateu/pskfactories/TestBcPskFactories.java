@@ -4,7 +4,9 @@ import fi.iki.elonen.NanoHTTPD;
 import okhttp3.*;
 import org.bchateau.pskfactories.BcPskSSLServerSocketFactory;
 import org.bchateau.pskfactories.BcPskSSLSocketFactory;
+import org.bchateau.pskfactories.BcPskTlsParams;
 import org.bouncycastle.tls.BasicTlsPSKIdentity;
+import org.bouncycastle.tls.ProtocolVersion;
 import org.bouncycastle.tls.TlsPSKIdentityManager;
 import org.junit.jupiter.api.Test;
 
@@ -22,11 +24,11 @@ public class TestBcPskFactories {
     /**
      * Test secret key, real implementations should not hardcode keys in source code like this!
      */
-    byte[] testPskKey = new byte[] { 0x1a, 0x2b, 0x3c, 0x4d };
+    final byte[] testPskKey = new byte[] { 0x1a, 0x2b, 0x3c, 0x4d };
 
-    BasicTlsPSKIdentity testIdentity = new BasicTlsPSKIdentity("test", testPskKey);
+    final BasicTlsPSKIdentity testIdentity = new BasicTlsPSKIdentity("test", testPskKey);
 
-    TlsPSKIdentityManager testIdentityMgr = new TlsPSKIdentityManager() {
+    final TlsPSKIdentityManager testIdentityMgr = new TlsPSKIdentityManager() {
         @Override
         public byte[] getHint() {
             // If multiple keys are supported this could signal which key to use
@@ -39,22 +41,30 @@ public class TestBcPskFactories {
         }
     };
 
+    final BcPskTlsParams defaultParams = new BcPskTlsParams();;
+
+    final BcPskTlsParams tls12Params = new BcPskTlsParams(new ProtocolVersion[] { ProtocolVersion.TLSv12 },
+            new int[] { org.bouncycastle.tls.CipherSuite.TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384 });
+
+    final BcPskTlsParams tls13Params = new BcPskTlsParams(new ProtocolVersion[] { ProtocolVersion.TLSv13 },
+            new int[] { org.bouncycastle.tls.CipherSuite.TLS_AES_128_GCM_SHA256 });
+
     interface HttpServerFinisher {
         void stop();
     }
 
-    private static void testTlsPskClientWithOkHttpClientBackedByBc() throws IOException {
+    private static void testTlsPskClientWithOkHttpClientBackedByBc(BcPskTlsParams params) throws IOException {
         log("Running OkHttp Client backed by BC");
 
         BasicTlsPSKIdentity identity = new BasicTlsPSKIdentity("test", new byte[] { 0x1a, 0x2b, 0x3c, 0x4d } );
         OkHttpClient client = new OkHttpClient.Builder()
                 .callTimeout(3, TimeUnit.SECONDS)
-                .sslSocketFactory(new BcPskSSLSocketFactory(identity), new BcPskSSLSocketFactory.EmptyX509TrustManager())
+                .sslSocketFactory(new BcPskSSLSocketFactory(params, identity), new BcPskSSLSocketFactory.EmptyX509TrustManager())
                 .hostnameVerifier((hostname, session) -> true)
                 .connectionSpecs(Collections.singletonList(new ConnectionSpec.Builder(ConnectionSpec.RESTRICTED_TLS)
                         // Must specify the CipherSuite, ConnectionSpec.RESTRICTED_TLS doesn't support PSK
-                        .cipherSuites(CipherSuite.forJavaName("TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256"))
-                        .tlsVersions(TlsVersion.TLS_1_2)
+                        .cipherSuites(params.getSupportedCipherSuites())
+                        .tlsVersions(params.getSupportedProtocols())
                         .build()))
                 .addInterceptor(new SSLHandshakeInterceptor())
                 .build();
@@ -82,7 +92,7 @@ public class TestBcPskFactories {
         }
     }
 
-    private static HttpServerFinisher testTlsPskNanoHttpdWithBcFactory() throws IOException {
+    private static HttpServerFinisher testTlsPskNanoHttpdWithBcFactory(BcPskTlsParams params) throws IOException {
         NanoHTTPD nano = new NanoHTTPD(4433) {
             @Override
             public Response serve(IHTTPSession session) {
@@ -114,7 +124,7 @@ public class TestBcPskFactories {
         };
 
         // Setting sslProtocols param to null tells NanoHTTPD to allow all protocols supported by the ServerSocketFactory
-        nano.makeSecure(new BcPskSSLServerSocketFactory(identityMgr), null);
+        nano.makeSecure(new BcPskSSLServerSocketFactory(params, identityMgr), null);
 
         log("Starting Nano HTTP server backed by BC");
         nano.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
@@ -129,20 +139,72 @@ public class TestBcPskFactories {
 
     @Test
     public void testClientCreate() {
-        new BcPskSSLSocketFactory(testIdentity);
+        new BcPskSSLSocketFactory(defaultParams, testIdentity);
     }
 
     @Test
     public void testServerCreate() {
-        new BcPskSSLServerSocketFactory(testIdentityMgr);
+        new BcPskSSLServerSocketFactory(defaultParams, testIdentityMgr);
     }
 
     @Test
-    public void testServerClientConnect() throws Exception {
+    public void testServerTlsDefaultClientTlsDefaultConnect() throws Exception {
         HttpServerFinisher server = null;
         try {
-            server = testTlsPskNanoHttpdWithBcFactory();
-            testTlsPskClientWithOkHttpClientBackedByBc();
+            server = testTlsPskNanoHttpdWithBcFactory(defaultParams);
+            testTlsPskClientWithOkHttpClientBackedByBc(defaultParams);
+        } finally {
+            if (server != null) {
+                server.stop();
+            }
+        }
+    }
+
+    @Test
+    public void testServerTls12ClientTlsDefaultConnect() throws Exception {
+        HttpServerFinisher server = null;
+        try {
+            server = testTlsPskNanoHttpdWithBcFactory(defaultParams);
+            testTlsPskClientWithOkHttpClientBackedByBc(tls12Params);
+        } finally {
+            if (server != null) {
+                server.stop();
+            }
+        }
+    }
+
+    @Test
+    public void testServerTlsDefaultClientTls12Connect() throws Exception {
+        HttpServerFinisher server = null;
+        try {
+            server = testTlsPskNanoHttpdWithBcFactory(tls12Params);
+            testTlsPskClientWithOkHttpClientBackedByBc(defaultParams);
+        } finally {
+            if (server != null) {
+                server.stop();
+            }
+        }
+    }
+
+    @Test
+    public void testServerTlsDefaultClientTls13Connect() throws Exception {
+        HttpServerFinisher server = null;
+        try {
+            server = testTlsPskNanoHttpdWithBcFactory(tls13Params);
+            testTlsPskClientWithOkHttpClientBackedByBc(defaultParams);
+        } finally {
+            if (server != null) {
+                server.stop();
+            }
+        }
+    }
+
+    @Test
+    public void testServerTls13ClientTlsDefaultConnect() throws Exception {
+        HttpServerFinisher server = null;
+        try {
+            server = testTlsPskNanoHttpdWithBcFactory(defaultParams);
+            testTlsPskClientWithOkHttpClientBackedByBc(tls13Params);
         } finally {
             if (server != null) {
                 server.stop();
