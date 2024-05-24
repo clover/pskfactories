@@ -164,8 +164,8 @@ public class TestBcPskFactories {
     public void testServerTls12ClientTlsDefaultConnect() throws Exception {
         HttpServerFinisher server = null;
         try {
-            server = testTlsPskNanoHttpdWithBcFactory(defaultParams);
-            testTlsPskClientWithOkHttpClientBackedByBc(tls12Params);
+            server = testTlsPskNanoHttpdWithBcFactory(tls12Params);
+            testTlsPskClientWithOkHttpClientBackedByBc(defaultParams);
         } finally {
             if (server != null) {
                 server.stop();
@@ -177,8 +177,8 @@ public class TestBcPskFactories {
     public void testServerTlsDefaultClientTls12Connect() throws Exception {
         HttpServerFinisher server = null;
         try {
-            server = testTlsPskNanoHttpdWithBcFactory(tls12Params);
-            testTlsPskClientWithOkHttpClientBackedByBc(defaultParams);
+            server = testTlsPskNanoHttpdWithBcFactory(defaultParams);
+            testTlsPskClientWithOkHttpClientBackedByBc(tls12Params);
         } finally {
             if (server != null) {
                 server.stop();
@@ -190,8 +190,8 @@ public class TestBcPskFactories {
     public void testServerTlsDefaultClientTls13Connect() throws Exception {
         HttpServerFinisher server = null;
         try {
-            server = testTlsPskNanoHttpdWithBcFactory(tls13Params);
-            testTlsPskClientWithOkHttpClientBackedByBc(defaultParams);
+            server = testTlsPskNanoHttpdWithBcFactory(defaultParams);
+            testTlsPskClientWithOkHttpClientBackedByBc(tls13Params);
         } finally {
             if (server != null) {
                 server.stop();
@@ -203,8 +203,8 @@ public class TestBcPskFactories {
     public void testServerTls13ClientTlsDefaultConnect() throws Exception {
         HttpServerFinisher server = null;
         try {
-            server = testTlsPskNanoHttpdWithBcFactory(defaultParams);
-            testTlsPskClientWithOkHttpClientBackedByBc(tls13Params);
+            server = testTlsPskNanoHttpdWithBcFactory(tls13Params);
+            testTlsPskClientWithOkHttpClientBackedByBc(defaultParams);
         } finally {
             if (server != null) {
                 server.stop();

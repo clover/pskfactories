@@ -14,7 +14,7 @@ To use one or both of these factories in your project do the following:
 
 ## Include Dependencies
 
-Include the Bouncy Castle bctls library and transitive dependencies in your project. If you are using Gradle with and Android project for example you would add the following to your dependencies:
+Include the Bouncy Castle bctls library and transitive dependencies in your project. If you are using Gradle with an Android project for example you would add the following to your dependencies:
 
     implementation "org.bouncycastle:bctls-jdk18on:1.78"
 
