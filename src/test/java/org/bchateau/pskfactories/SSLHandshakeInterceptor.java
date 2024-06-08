@@ -1,4 +1,4 @@
-package org.bchateu.pskfactories;
+package org.bchateau.pskfactories;
 
 import okhttp3.CipherSuite;
 import okhttp3.Handshake;
