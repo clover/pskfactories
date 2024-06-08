@@ -128,7 +128,9 @@ public class BcPskTlsParams {
         // Update as needed, see org/bouncycastle/tls/CipherSuite.java
         suiteToCodeMap.put("TLS_DHE_PSK_WITH_AES_128_CBC_SHA", 0x0090);
         suiteToCodeMap.put("TLS_DHE_PSK_WITH_AES_128_GCM_SHA256", 0x00AA);
+        suiteToCodeMap.put("TLS_DHE_PSK_WITH_AES_256_GCM_SHA384", 0x00AB);
         suiteToCodeMap.put("TLS_DHE_PSK_WITH_AES_128_CBC_SHA256", 0x00B2);
+        suiteToCodeMap.put("TLS_DHE_PSK_WITH_AES_256_CBC_SHA384", 0x00B3);
         suiteToCodeMap.put("TLS_AES_128_GCM_SHA256", 0x1301);
         suiteToCodeMap.put("TLS_AES_256_GCM_SHA384", 0x1302);
         suiteToCodeMap.put("TLS_CHACHA20_POLY1305_SHA256", 0x1303);

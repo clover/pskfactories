@@ -33,5 +33,5 @@ dependencies {
     implementation "com.squareup.okhttp3:okhttp:3.12.13"
     implementation "org.nanohttpd:nanohttpd:2.3.1"
 
-    testImplementation "org.junit.jupiter:junit-jupiter:5.8.2"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
 }
